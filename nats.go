@@ -116,10 +116,6 @@ func (n *Nats) Subscribe(topic string, handler MessageHandler) error {
 
 // Connects to JetStream and creates a new stream or updates it if exists already
 func (n *Nats) JetStreamSetup(streamConfig *natsio.StreamConfig) error {
-
-        fmt.Printf("JetStream Setup is called.\n")
-        fmt.Printf("%+v\n", streamConfig)
-
 	if n.conn == nil {
 		return fmt.Errorf("the connection is not valid")
 	}
@@ -138,6 +134,22 @@ func (n *Nats) JetStreamSetup(streamConfig *natsio.StreamConfig) error {
 
 	return err
 }
+
+func (n *Nats) JetStreamDelete(name string) error {
+	if n.conn == nil {
+		return fmt.Errorf("the connection is not valid")
+	}
+
+        js, err := n.conn.JetStream()
+        if err != nil {
+                return fmt.Errorf("cannot accquire jetstream context %w", err)
+        }
+
+        js.DeleteStream(name)
+
+        return err
+}
+
 
 func (n *Nats) JetStreamPublish(topic string, message string) error {
 	if n.conn == nil {
