@@ -115,27 +115,31 @@ func (n *Nats) Subscribe(topic string, handler MessageHandler) error {
 }
 
 // Connects to JetStream and creates a new stream or updates it if exists already
-func (n *Nats) Jetstreamsetup(topic string, config *natsio.StreamConfig) error {
+func (n *Nats) JetStreamSetup(streamConfig *natsio.StreamConfig) error {
+
+        fmt.Printf("JetStream Setup is called.\n")
+        fmt.Printf("%+v\n", streamConfig)
+
 	if n.conn == nil {
 		return fmt.Errorf("the connection is not valid")
 	}
 
-	js, err := n.conn.JetStream()
+        js, err := n.conn.JetStream()
         if err != nil {
                 return fmt.Errorf("cannot accquire jetstream context %w", err)
         }
 
-        stream, _ := js.StreamInfo(topic)
+        stream, _ := js.StreamInfo(streamConfig.Name)
         if stream == nil {
-                _, err = js.AddStream(config)
+                _, err = js.AddStream(streamConfig)
         } else {
-                _, err = js.UpdateStream(config)
+                _, err = js.UpdateStream(streamConfig)
         }
 
 	return err
 }
 
-func (n *Nats) Jetstreampublish(topic string, message string) error {
+func (n *Nats) JetStreamPublish(topic string, message string) error {
 	if n.conn == nil {
 		return fmt.Errorf("the connection is not valid")
 	}
@@ -150,7 +154,7 @@ func (n *Nats) Jetstreampublish(topic string, message string) error {
         return err
 }
 
-func (n *Nats) Jetstreamsubscribe(topic string, handler MessageHandler) error {
+func (n *Nats) JetStreamSubscribe(topic string, handler MessageHandler) error {
 	if n.conn == nil {
 		return fmt.Errorf("the connection is not valid")
 	}
