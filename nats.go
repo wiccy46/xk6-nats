@@ -176,16 +176,23 @@ func (n *Nats) JetStreamSubscribe(topic string, handler MessageHandler) error {
                 return fmt.Errorf("cannot accquire jetstream context %w", err)
         }
 
-	_, err = js.Subscribe(topic, func(msg *natsio.Msg) {
+        sub, err := js.Subscribe(topic, func(msg *natsio.Msg) {
 		message := Message{
 			Data:  string(msg.Data),
 			Topic: msg.Subject,
 		}
 		handler(message)
 	})
+        
+        defer func() {
+                if err := sub.Unsubscribe(); err != nil {
+                        fmt.Errorf("Error unsubscribing")
+		}
+        }()
 
 	return err
 }
+
 
 func (n *Nats) Request(subject, data string) (Message, error) {
 	if n.conn == nil {
