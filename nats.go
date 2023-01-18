@@ -2,6 +2,7 @@ package nats
 
 import (
 	"crypto/tls"
+        "context"
 	"fmt"
 	"time"
 
@@ -208,6 +209,16 @@ func (n *Nats) Request(subject, data string) (Message, error) {
 		Data:  string(msg.Data),
 		Topic: msg.Subject,
 	}, nil
+}
+
+func (n *Nats) RestoreSystem() error {
+        fmt.Printf("Restoring system")
+	msg := natsio.NewMsg("request.restore.system")
+        ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	_, err := n.conn.RequestMsgWithContext(ctx, msg)
+        return err
 }
 
 type Configuration struct {
