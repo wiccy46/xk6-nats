@@ -12,7 +12,6 @@ import (
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
         "google.golang.org/protobuf/proto"
-        "google.golang.org/protobuf/encoding/protojson"
 )
 
 func init() {
@@ -198,45 +197,6 @@ func (n *Nats) JetStreamSubscribe(topic string, handler MessageHandler) error {
 }
 
 
-func (n *Nats) SubscribeBeamInstances(topic string, handler MessageHandler) string {
-        t0 := time.Now()
-	if n.conn == nil {
-                return time.Since(t0).String()
-	}
-
-	js, err := n.conn.JetStream()
-        if err != nil {
-                return time.Since(t0).String()
-        }
-
-        sub, err := js.Subscribe(topic, func(msg *natsio.Msg) {
-                beamInstances := mcpb.BeamInstances{}
-
-                if err := proto.Unmarshal(msg.Data, &beamInstances); err != nil {
-                        fmt.Errorf("cannot unmarshal beam instances")
-		}
-
-                // Todo for now convert it to string for quick check
-                // can dump them to json
-                biStr := protojson.Format(&beamInstances)
-
-		message := Message{
-                        Data:  string(biStr),
-			Topic: msg.Subject,
-		}
-		handler(message)
-	})
-        
-        defer func() {
-                if err := sub.Unsubscribe(); err != nil {
-                        fmt.Errorf("Error unsubscribing")
-		}
-        }()
-
-        return time.Since(t0).String()
-}
-
-
 func (n *Nats) Request(subject, data string) (Message, error) {
 	if n.conn == nil {
 		return Message{}, fmt.Errorf("the connection is not valid")
@@ -263,6 +223,128 @@ func (n *Nats) RestoreSystem() error {
         return err
 }
 
+
+// func (n *Nats) SubscribeBeamInstances(topic string, handler MessageHandler) string {
+//         t0 := time.Now()
+// 	if n.conn == nil {
+//                 return time.Since(t0).String()
+// 	}
+
+// 	js, err := n.conn.JetStream()
+//         if err != nil {
+//                 return time.Since(t0).String()
+//         }
+
+//         sub, err := js.Subscribe(topic, func(msg *natsio.Msg) {
+//                 beamInstances := mcpb.BeamInstances{}
+
+//                 if err := proto.Unmarshal(msg.Data, &beamInstances); err != nil {
+//                         fmt.Errorf("cannot unmarshal beam instances")
+// 		}
+
+//                 // Todo for now convert it to string for quick check
+//                 // can dump them to json
+//                 biStr := protojson.Format(&beamInstances)
+
+// 		message := Message{
+//                         Data:  string(biStr),
+// 			Topic: msg.Subject,
+// 		}
+// 		handler(message)
+// 	})
+//         
+//         defer func() {
+//                 if err := sub.Unsubscribe(); err != nil {
+//                         fmt.Errorf("Error unsubscribing")
+// 		}
+//         }()
+
+//         return time.Since(t0).String()
+// }
+
+func (n *Nats) SubscribeBeamInstances(module string, handler NatsmessageHandler) error {
+        topic := fmt.Sprintf("config.module.%s.beam-instances", module)
+	if n.conn == nil {
+                return fmt.Errorf("Cannot connect")
+	}
+
+	js, err := n.conn.JetStream()
+        if err != nil {
+                return err
+        }
+
+        sub, err := js.Subscribe(topic, func(msg *natsio.Msg) {
+
+		message := Natsmsg{
+			Topic: msg.Subject,
+                        Size: len(msg.Data),
+		}
+		handler(message)
+
+	})
+        
+        defer func() {
+                if err := sub.Unsubscribe(); err != nil {
+                        fmt.Errorf("Error unsubscribing")
+		}
+        }()
+        return err
+}
+
+func (n *Nats) SubBeamInsThenCoefficients(module string, handler NatsmessageHandler) error {
+
+	if n.conn == nil {
+                return fmt.Errorf("Cannot connect")
+	}
+
+	js, err := n.conn.JetStream()
+        if err != nil {
+                return err
+        }
+        
+        bsTopic := fmt.Sprintf("config.module.%s.beam-instances", module)
+
+        sub, err := js.Subscribe(bsTopic, func(msg *natsio.Msg) {
+
+                beamInstances := mcpb.BeamInstances{}
+
+                if err := proto.Unmarshal(msg.Data, &beamInstances); err != nil {
+                        fmt.Errorf("cannot unmarshal beam instances")
+		}
+
+                dcTopic := fmt.Sprintf("request.get.module.%s.beam-instances-drivers-coefficients", module)
+
+                request := mcpb.GetBeamInstancesDriversCoefficientsRequest{
+                        BeamInstances: &beamInstances,
+                }
+
+                requestData, err := proto.Marshal(&request)
+                if err != nil {
+                        fmt.Errorf("Can't marshal request")
+                }
+
+                respMsg, err := n.conn.Request(dcTopic, requestData, 30*time.Second)
+
+                resultSize := len(respMsg.Data)
+		message := Natsmsg{
+			Topic: respMsg.Subject,
+                        Size: resultSize,
+		}
+                fmt.Printf("Result size is %d\n", resultSize)
+		handler(message)
+
+	})
+        
+        defer func() {
+                if err := sub.Unsubscribe(); err != nil {
+                        fmt.Errorf("Error unsubscribing")
+		}
+        }()
+        return err
+}
+
+
+
 type Configuration struct {
 	Servers []string
 	Unsafe  bool
@@ -272,6 +354,13 @@ type Configuration struct {
 type Message struct {
 	Data  string
 	Topic string
+        Size int
+}
+
+type Natsmsg struct {
+        Topic string
+        Size  int
 }
 
 type MessageHandler func(Message)
+type NatsmessageHandler func(Natsmsg)

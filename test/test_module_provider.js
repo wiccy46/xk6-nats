@@ -9,26 +9,35 @@ const natsConfig = {
 
 const restorer = new Nats(natsConfig);
 const subscriber = new Nats(natsConfig);
-const sub = 'config.module.AAA-1111.beam-instances'
+const moduleID = 'AAA-1111'
+// const approxBeamInstancesBytes = 18000
+const driverCoefficientsSize = 22372080
 
 export default function () {
     restorer.restoreSystem()
-    sleep(3)
-    let t = "empty"
 
-    t = subscriber.subscribeBeamInstances(sub, (msg) => {
-        // console.log(msg.data);
-        console.log('after logging msg.data')
+    // subscriber.subscribeBeamInstances(moduleID, (msg) => {
+    //     console.log(msg.topic)
 
-       //  check(msg, {
-       //      // 'Is expected message': (m) => m.data === "I am a foo",
-       //      'Is expected stream topic': (m) => m.topic === sub,
-       // })
+    //     check(msg, {
+    //       'Is expected stream topic': (m) => m.topic == "config.module.AAA-1111.beam-instances",
+    //       'Is size match': (m) => m.size > approxBeamInstancesBytes
+    //     })
+
+    // });
+
+    // sleep(8)
+
+    subscriber.subBeamInsThenCoefficients(moduleID, (msg) => {
+        console.log(msg.topic)
+
+        check(msg, {
+          'Is size match': (m) => m.size == driverCoefficientsSize
+        })
+
     });
 
-
-    console.log('time took is ' + t)
-    sleep(5)
+    sleep(15)
 
 }
 
