@@ -3,13 +3,15 @@ module github.com/ydarias/xk6-nats
 go 1.17
 
 require (
+	github.com/dop251/goja v0.0.0-20220124171016-cfb079cdc7b4
+	github.com/holoplot/sw__protocols_generated/go v0.0.0-20230105132456-ab800e5f010b
 	github.com/nats-io/nats.go v1.13.1-0.20220308171302-2f2f6968e98d
 	go.k6.io/k6 v0.37.0
+	google.golang.org/protobuf v1.28.1
 )
 
 require (
 	github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91 // indirect
-	github.com/dop251/goja v0.0.0-20220124171016-cfb079cdc7b4 // indirect
 	github.com/fatih/color v1.12.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4-0.20211119122758-180fcef48034+incompatible // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

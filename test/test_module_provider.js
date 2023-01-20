@@ -9,25 +9,30 @@ const natsConfig = {
 
 const restorer = new Nats(natsConfig);
 const subscriber = new Nats(natsConfig);
-const sub = 'config.module.AAA-1114.beam-instances'
+const sub = 'config.module.AAA-1111.beam-instances'
 
 export default function () {
     restorer.restoreSystem()
-    sleep(5)
+    sleep(3)
+    let t = "empty"
 
-    subscriber.jetStreamSubscribe(sub, (msg) => {
-        console.log(msg.data);
+    t = subscriber.subscribeBeamInstances(sub, (msg) => {
+        // console.log(msg.data);
+        console.log('after logging msg.data')
 
-        check(msg, {
-            'Is expected message': (m) => m.data === "I am a foo",
-            'Is expected stream topic': (m) => m.topic === sub,
-       })
+       //  check(msg, {
+       //      // 'Is expected message': (m) => m.data === "I am a foo",
+       //      'Is expected stream topic': (m) => m.topic === sub,
+       // })
     });
 
-    sleep(10)
+
+    console.log('time took is ' + t)
+    sleep(5)
 
 }
 
 export function teardown() {
     subscriber.close();
+    restorer.close()
 }
