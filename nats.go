@@ -291,33 +291,40 @@ func (n *Nats) SubscribeBeamInstances(module string, handler NatsmessageHandler)
         return err
 }
 
-func (n *Nats) SubBeamInsThenCoefficients(module string, handler NatsmessageHandler) error {
+func (n *Nats) SubBeamInsThenCoefficients(module string, handler NatsmessageHandler) int {
+        si := 0
 
 	if n.conn == nil {
-                return fmt.Errorf("Cannot connect")
+                fmt.Errorf("Cannot connect")
+                return si
 	}
 
 	js, err := n.conn.JetStream()
         if err != nil {
-                return err
+                fmt.Errorf("Cannot connect to JetStream")
+                return si
         }
         
         bsTopic := fmt.Sprintf("config.module.%s.beam-instances", module)
         sub, err := js.SubscribeSync(bsTopic)
         if err != nil {
-                return fmt.Errorf("cannot subscribe to topic")
+                fmt.Errorf("cannot subscribe to topic")
+                return si
         }
 
         msg, err := sub.NextMsg(60 * time.Minute)
         if err != nil {
-                return fmt.Errorf("wait for beam instances message timeout")
+                fmt.Errorf("wait for beam instances message timeout")
+                return si
         }
         
 
         beamInstances := mcpb.BeamInstances{}
 
+
         if err := proto.Unmarshal(msg.Data, &beamInstances); err != nil {
                 fmt.Errorf("cannot unmarshal beam instances")
+                return si
         }
 
         dcTopic := fmt.Sprintf("request.get.module.%s.beam-instances-drivers-coefficients", module)
@@ -327,59 +334,28 @@ func (n *Nats) SubBeamInsThenCoefficients(module string, handler NatsmessageHand
         }
 
         requestData, err := proto.Marshal(&request)
+
         if err != nil {
                 fmt.Errorf("Can't marshal request")
+                return si
         }
 
         respMsg, err := n.conn.Request(dcTopic, requestData, 30*time.Minute)
 
-        resultSize := len(respMsg.Data)
+        si = len(respMsg.Data)
         message := Natsmsg{
                 Topic: respMsg.Subject,
-                Size: resultSize,
+                Size: si,
         }
-        fmt.Printf("Result size is %d\n", resultSize)
         handler(message)
-  //       sub, err := js.SubscribeSync(bsTopic, func(msg *natsio.Msg) {
-
-  //               beamInstances := mcpb.BeamInstances{}
-
-  //               if err := proto.Unmarshal(msg.Data, &beamInstances); err != nil {
-  //                       fmt.Errorf("cannot unmarshal beam instances")
-		// }
-
-  //               dcTopic := fmt.Sprintf("request.get.module.%s.beam-instances-drivers-coefficients", module)
-
-  //               request := mcpb.GetBeamInstancesDriversCoefficientsRequest{
-  //                       BeamInstances: &beamInstances,
-  //               }
-
-  //               requestData, err := proto.Marshal(&request)
-  //               if err != nil {
-  //                       fmt.Errorf("Can't marshal request")
-  //               }
-
-  //               respMsg, err := n.conn.Request(dcTopic, requestData, 30*time.Second)
-
-  //               resultSize := len(respMsg.Data)
-		// message := Natsmsg{
-		// 	Topic: respMsg.Subject,
-  //                       Size: resultSize,
-		// }
-  //               fmt.Printf("Result size is %d\n", resultSize)
-		// handler(message)
-
-	// })
         
         defer func() {
                 if err := sub.Unsubscribe(); err != nil {
                         fmt.Errorf("Error unsubscribing")
 		}
         }()
-        return err
+        return si
 }
-
-
 
 type Configuration struct {
 	Servers []string

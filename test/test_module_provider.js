@@ -1,6 +1,7 @@
 import {check} from 'k6';
 import { SharedArray } from 'k6/data';
 import {Nats} from 'k6/x/nats';
+import { Trend } from 'k6/metrics';
 
 export let options = {
   scenarios: {
@@ -19,6 +20,8 @@ const natsConfig = {
     unsafe: true,
 };
 
+const responseSize = new Trend('coefficient_size');
+
 const physical_id_array = new SharedArray('Physical Module ID', function () {
   return JSON.parse(open('../data/physical_ids_output240.json')).physicalId;
 })
@@ -33,23 +36,18 @@ export function setup() {
 
 }
 
-
 export default function () {
     const moduleID = physical_id_array[__VU-1];
     console.log("The module id is " + moduleID);
 
-    subscriber.subBeamInsThenCoefficients(moduleID, (msg) => {
+    const si = subscriber.subBeamInsThenCoefficients(moduleID, (msg) => {
+        console.log("message size is " + msg.size),
         check(msg, {
           'Is size match': (m) => m.size == driverCoefficientsSize
         })
     });
 
-    // subscriber.subscribeBeamInstances(moduleID, (msg) => {
-    //     check(msg, {
-    //       'Is expected stream topic': (m) => m.topic == "config.module.AAA-1111.beam-instances",
-    //       'Is size match': (m) => m.size > approxBeamInstancesBytes
-    //     })
-    // });
+    responseSize.add(si)
 
 }
 
