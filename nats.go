@@ -291,7 +291,7 @@ func (n *Nats) SubscribeBeamInstances(module string, handler NatsmessageHandler)
         return err
 }
 
-func (n *Nats) SubBeamInsThenCoefficients(module string, handler NatsmessageHandler) int {
+func (n *Nats) SubBeamInsThenCoefficients(module string) int {
         si := 0
 
 	if n.conn == nil {
@@ -343,11 +343,6 @@ func (n *Nats) SubBeamInsThenCoefficients(module string, handler NatsmessageHand
         respMsg, err := n.conn.Request(dcTopic, requestData, 30*time.Minute)
 
         si = len(respMsg.Data)
-        message := Natsmsg{
-                Topic: respMsg.Subject,
-                Size: si,
-        }
-        handler(message)
         
         defer func() {
                 if err := sub.Unsubscribe(); err != nil {
