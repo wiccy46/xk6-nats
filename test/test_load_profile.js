@@ -27,22 +27,23 @@ const rampUp = [
         { duration: 2, target: 20},
       ];
 
-
 function getAssignedDelays(rampUp) {
-  var delays = [];
-  var prev_vus = 0;
-  var base_del = 0;
-  for (let i in rampUp) {
-    if (rampUp[i].target < prev_vus) {
-      throw new Error ("First stage must has more than 0 targets, then each stage should have bigger target than the previous");
+  let delays = [];
+  let prevVus = 0;
+  let baseDel = 0;
+
+  for (const stage of rampUp) {
+    if (stage.target <= prevVus) {
+      throw new Error("Each stage must have a greater target than the previous");
+    }
+    const step = stage.duration / (stage.target - prevVus);
+
+    for (let j = prevVus; j < stage.target; j++) {
+      delays.push((j - prevVus) * step + baseDel);
     }
 
-		for (let j = 0; j < rampUp[i].target - prev_vus; j++) {
-    	const step = 1 / (rampUp[i].target - prev_vus) * rampUp[i].duration;
-      delays.push(j * step + base_del);
-		}
-    prev_vus = rampUp[i].target;
-    base_del += rampUp[i].duration;
+    prevVus = stage.target;
+    baseDel += stage.duration;
   }
   return delays;
 }
@@ -57,7 +58,7 @@ const natsConfig = {
 };
 
 const physical_id_array = new SharedArray('Physical Module ID', function () {
-  return JSON.parse(open('../data/physical_ids_output240.json')).physicalId;
+  return JSON.parse(open('../data/physical_ids_studio22.json')).physicalId;
 })
 const restorer = new Nats(natsConfig);
 const subscriber = new Nats(natsConfig);
